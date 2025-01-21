@@ -9,7 +9,7 @@
   },
   "type": "module",
   "name": "express-easier",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "A library to make express faster and easier to use.",
   "main": "index.js",
   "scripts": {
