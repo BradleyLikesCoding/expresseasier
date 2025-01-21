@@ -10,8 +10,14 @@ import connectSessionSequelize from 'connect-session-sequelize'
 const SequelizeStore = connectSessionSequelize(session.Store);
 
 class SQLiteDB {
-    constructor(DBPath) {
-        this.seq = new Sequelize("sqlite://" + path.join(DBPath));
+    constructor(DBPathOrDB, logging) {
+        if (DBPathOrDB instanceof Sequelize) {
+            this.seq = DBPathOrDB;
+        } else {
+            this.seq = new Sequelize("sqlite://" + DBPathOrDB, {
+                logging: logging
+            });
+        }
         this.models = {};
     }
 
@@ -55,7 +61,7 @@ class ExpressEasier {
         this.views = {};
         this.config = { "templateIgnorePaths": [] };
         this.app.set("view engine", viewEngine);
-        this.app.set("views", path.join(process.cwd(), "public"));
+        this.app.set("views", path.join("public"));
     }
 
     async callbackWrapper(callback, args) {
@@ -93,8 +99,42 @@ class ExpressEasier {
         }
     }
 
-    useSequelize(path = "database.db") {
-        this.db = new SQLiteDB(path);
+    useSequelize(DBPathOrDB = "database.db", logging = false) {
+        this.db = new SQLiteDB(DBPathOrDB, logging);
+    }
+
+    getTemplatePathFromURLPath(urlPath) {
+        if (urlPath === "/") {
+            const indexPath = path.join("public", `index.${this.viewExtension}`);
+            const indexInDirPath = path.join("public", "index", `index.${this.viewExtension}`);
+            if (fs.existsSync(indexPath)) {
+                return indexPath;
+            } else if (fs.existsSync(indexInDirPath)) {
+                return indexInDirPath;
+            } else {
+                return false;
+            }
+        } else {
+            urlPath = urlPath.replace(/\/$/, "");
+            if (urlPath.endsWith("." + this.viewExtension)) {
+                const filePath = path.join("public", urlPath);
+                if (fs.existsSync(filePath)) {
+                    return filePath;
+                } else {
+                    return false;
+                }
+            } else {
+                const fileWithExtensionPath = path.join("public", `${urlPath}.${this.viewExtension}`);
+                const indexPath = path.join("public", urlPath, `index.${this.viewExtension}`);
+                if (fs.existsSync(fileWithExtensionPath)) {
+                    return fileWithExtensionPath;
+                } else if (fs.existsSync(indexPath)) {
+                    return indexPath;
+                } else {
+                    return false;
+                }
+            }
+        }
     }
 
     useTemplates(pathArg = "") {
@@ -106,40 +146,45 @@ class ExpressEasier {
             try {
                 const ext = path.extname(req.path);
                 if (ext === this.viewEngine || ext === "") {
-                    const filePath = path.join(process.cwd(), "public", (req.path == "/" ? "index" : req.path.replace(/\/$/, '')) + (ext === this.viewEngine ? "" : "." + this.viewExtension));
-                    if (fs.existsSync(filePath)) {
-                        var args;
+                    const filePath = this.getTemplatePathFromURLPath(req.path);
+                    if (filePath !== false) {
+                        let args;
                         try {
-                            args = await this.callbackWrapper(this.views[(req.path == "/" ? "/index" : req.path.replace(/\/$/, '')) + (ext === this.viewEngine ? "" : "." + this.viewExtension)], [req, res, next]);
+                            args = await this.callbackWrapper(this.views[filePath]);
                         } catch {
                             res.send(this.render(filePath, { req: req, res: res }));
                             return;
                         }
-                        if (args !== false && args !== undefined) {
+                        if (args === false) {
+                            return;
+                        } else if (args !== undefined) {
                             res.send(this.render(filePath, { req: req, res: res, ...args }));
+                            return;
+                        } else {
+                            res.send(this.render(filePath, { req: req, res: res }));
+                            return;
                         }
-                        return;
                     }
+                } else {
+                    next();
                 }
-
-                next();
             } catch (err) {
-                console.log(err.message);
+                console.error(err.message);
                 this.return500(res);
             }
         });
     }
 
     useStatic(pathArg = "") {
-        this.app.use(pathArg, express.static(path.join(process.cwd(), "public")));
+        this.app.use(pathArg, express.static("public"));
     }
 
     use404(pathArg = "") {
         this.app.use(pathArg, (req, res) => {
-            if (fs.existsSync(path.join(process.cwd(), "public", "404." + this.viewExtension))) {
+            if (fs.existsSync(path.join("public", "404." + this.viewExtension))) {
                 res.status(404).send(this.render("404", { req: req, res: res }));
-            } else if (fs.existsSync(path.join(process.cwd(), "public", "404.html"))) {
-                res.status(404).sendFile(path.join(process.cwd(), "public", "404.html"));
+            } else if (fs.existsSync("public/404.html")) {
+                res.status(404).sendFile("public/404.html");
             } else {
                 res.status(404).send("<h1>404 Page Not Found</h1>");
             }
@@ -147,10 +192,10 @@ class ExpressEasier {
     }
 
     return500(res) {
-        if (fs.existsSync(path.join(process.cwd(), "public", "500." + this.viewExtension))) {
+        if (fs.existsSync(path.join("public/500." + this.viewExtension))) {
             res.status(404).send(this.render("404", { req: req, res: res }));
-        } else if (fs.existsSync(path.join(process.cwd(), "public", "500.html"))) {
-            res.status(404).sendFile(path.join(process.cwd(), "public", "500.html"));
+        } else if (fs.existsSync("public/500.html")) {
+            res.status(404).sendFile("public/500.html");
         } else {
             res.status(404).send("<h1>500 Internal Server Error</h1>");
         }
