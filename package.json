@@ -4,17 +4,29 @@
     "connect-session-sequelize": "^7.1.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "nanoid": "^5.0.9",
     "sequelize": "^6.37.5",
-    "sqlite3": "^5.1.7",
-    "uuid": "^11.0.5"
+    "sqlite3": "^5.1.7"
   },
   "type": "module",
-  "name": "backendez",
-  "version": "1.0.0",
-  "description": "makes backends easier",
+  "name": "expresseasier",
+  "version": "0.1.0",
+  "description": "A library to make express faster and easier to use.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  }
+    "test": "node helloworld.js"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BradleyLikesCoding/expresseasier.git"
+  },
+  "keywords": [
+    "express",
+    "easy",
+    "simple"
+  ],
+  "bugs": {
+    "url": "https://github.com/BradleyLikesCoding/expresseasier/issues"
+  },
+  "homepage": "https://github.com/BradleyLikesCoding/expresseasier#readme"
 }

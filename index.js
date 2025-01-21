@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid';
 import session from "express-session";
 import bcrypt from "bcrypt";
 import connectSessionSequelize from 'connect-session-sequelize'
+import { dir } from "console";
 const SequelizeStore = connectSessionSequelize(session.Store);
 
 class SQLiteDB {
@@ -54,14 +55,11 @@ class SQLiteDB {
 }
 
 class ExpressEasier {
-    constructor(viewEngine, viewExtension) {
+    constructor(directory) {
+        this.appDirectory = directory;
         this.app = express();
-        this.viewEngine = viewEngine;
-        this.viewExtension = viewExtension;
-        this.views = {};
-        this.config = { "templateIgnorePaths": [] };
-        this.app.set("view engine", viewEngine);
-        this.app.set("views", path.join("public"));
+        this.usingViewEngine = false;
+        this.config = { "ignoreViewsPaths": [] };
     }
 
     async callbackWrapper(callback, args) {
@@ -103,7 +101,7 @@ class ExpressEasier {
         this.db = new SQLiteDB(DBPathOrDB, logging);
     }
 
-    getTemplatePathFromURLPath(urlPath) {
+    getViewPathFromURLPath(urlPath) {
         if (urlPath === "/") {
             const indexPath = path.join("public", `index.${this.viewExtension}`);
             const indexInDirPath = path.join("public", "index", `index.${this.viewExtension}`);
@@ -137,16 +135,24 @@ class ExpressEasier {
         }
     }
 
-    useTemplates(pathArg = "") {
+    useViews(viewEngine, viewExtension, pathArg = "") {
+        this.usingViewEngine = true;
+        this.viewEngine = viewEngine;
+        this.viewExtension = viewExtension;
+        this.views = {};
+        this.app.set("view engine", viewEngine);
+        this.app.set("views", path.join("public"));
+
         this.app.use(pathArg, async (req, res, next) => {
-            if (req.path in this.config.templateIgnorePaths) {
+            if (req.path.replace(/\/$/, "").replace(/^\//, "") in this.config.ignoreViewsPaths) {
                 next();
                 return;
             }
+
             try {
                 const ext = path.extname(req.path);
                 if (ext === this.viewEngine || ext === "") {
-                    const filePath = this.getTemplatePathFromURLPath(req.path);
+                    const filePath = this.getViewPathFromURLPath(req.path);
                     if (filePath !== false) {
                         let args;
                         try {
@@ -164,6 +170,8 @@ class ExpressEasier {
                             res.send(this.render(filePath, { req: req, res: res }));
                             return;
                         }
+                    } else {
+                        next();
                     }
                 } else {
                     next();
@@ -183,8 +191,8 @@ class ExpressEasier {
         this.app.use(pathArg, (req, res) => {
             if (fs.existsSync(path.join("public", "404." + this.viewExtension))) {
                 res.status(404).send(this.render("404", { req: req, res: res }));
-            } else if (fs.existsSync("public/404.html")) {
-                res.status(404).sendFile("public/404.html");
+            } else if (fs.existsSync(path.join(this.appDirectory, "public", "500.html"))) {
+                res.status(404).sendFile(path.join(this.appDirectory, "public", "500.html"));
             } else {
                 res.status(404).send("<h1>404 Page Not Found</h1>");
             }
@@ -194,8 +202,8 @@ class ExpressEasier {
     return500(res) {
         if (fs.existsSync(path.join("public/500." + this.viewExtension))) {
             res.status(404).send(this.render("404", { req: req, res: res }));
-        } else if (fs.existsSync("public/500.html")) {
-            res.status(404).sendFile("public/500.html");
+        } else if (fs.existsSync(path.join(this.appDirectory, "public", "500.html"))) {
+            res.status(404).sendFile(path.join(this.appDirectory, "public", "500.html"));
         } else {
             res.status(404).send("<h1>500 Internal Server Error</h1>");
         }
@@ -209,12 +217,21 @@ class ExpressEasier {
         }
     }
 
-    render(template, data) {
-        return this.viewEngine.render(template, data);
+    render(view, data) {
+        if(this.usingViewEngine) {
+        return this.viewEngine.render(view, data);
+        } else {
+            console.error("Cannot render when not using views");
+            return;
+        }
     }
 
     addView(path, callback) {
         this.views[path] = callback;
+    }
+
+    ignoreViewsForPath(path) {
+        this.config.ignoreViewsPaths.push(path.replace(/\/$/, "").replace(/^\//, ""));
     }
 
     listen(port, callback) {
