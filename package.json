@@ -8,8 +8,8 @@
     "sqlite3": "^5.1.7"
   },
   "type": "module",
-  "name": "expresseasier",
-  "version": "0.1.0",
+  "name": "express-easier",
+  "version": "1.0.1",
   "description": "A library to make express faster and easier to use.",
   "main": "index.js",
   "scripts": {
@@ -25,6 +25,7 @@
     "easy",
     "simple"
   ],
+  "author": "BradleyLikesCoding",
   "bugs": {
     "url": "https://github.com/BradleyLikesCoding/expresseasier/issues"
   },
