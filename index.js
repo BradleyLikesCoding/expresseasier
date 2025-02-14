@@ -10,7 +10,7 @@ import chalk from "chalk";
 import connectSessionSequelize from 'connect-session-sequelize'
 const SequelizeStore = connectSessionSequelize(session.Store);
 
-class SQLiteDB {
+class SequelizeDB {
     constructor(DBPathOrDB, logging) {
         if (DBPathOrDB instanceof Sequelize) {
             this.seq = DBPathOrDB;
@@ -102,7 +102,7 @@ class ExpressEasier {
     }
 
     useSequelize(DBPathOrDB = "database.db", logging = false) {
-        this.db = new SQLiteDB(DBPathOrDB, logging);
+        this.db = new SequelizeDB(DBPathOrDB, logging);
     }
 
     getViewPathFromURLPath(urlPath) {
@@ -242,25 +242,27 @@ class ExpressEasier {
         console.log(chalk.green.bold(`Server is running on http://localhost:${port}`));
     }) {
         this.server = this.app.listen(port, callback);
+        process.on('SIGTERM', this.gracefulShutdown);
+        process.on('SIGINT', this.gracefulShutdown);
     }
 
-gracefulShutdown() {
-    console.log(chalk.red.bold('Received termination signal. Shutting down gracefully...'));
+    gracefulShutdown() {
+        console.log(chalk.red.bold('Received termination signal. Shutting down gracefully...'));
 
-    this.server.close(() => {
-        console.log(chalk.red.bold('Closed all connections.'));
-        if (this.onShutdown !== undefined) {
-            this.onShutdown();
-        }
-        process.exit(0);
-    });
+        this.server.close(() => {
+            console.log(chalk.red.bold('Closed all connections.'));
+            if (this.onShutdown !== undefined) {
+                this.onShutdown();
+            }
+            process.exit(0);
+        });
 
-    // Force exit if there are ongoing requests after a certain timeout (e.g., 10 seconds)
-    setTimeout(() => {
-        console.log(chalk.red.bold('Force shutdown after 10 seconds'));
-        process.exit(1);
-    }, 10000);
-}
+        // Force exit if there are ongoing requests after a certain timeout (e.g., 10 seconds)
+        setTimeout(() => {
+            console.log(chalk.red.bold('Force shutdown after 10 seconds'));
+            process.exit(1);
+        }, 10000);
+    }
 }
 
 export default ExpressEasier;
