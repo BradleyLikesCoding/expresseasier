@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
 import session from "express-session";
 import bcrypt from "bcrypt";
+import chalk from "chalk";
 import connectSessionSequelize from 'connect-session-sequelize'
-import { dir } from "console";
 const SequelizeStore = connectSessionSequelize(session.Store);
 
 class SQLiteDB {
@@ -41,7 +41,7 @@ class SQLiteDB {
         try {
             return await bcrypt.hash(value, saltrounds);
         } catch (error) {
-            console.error('Error hashing:', error);
+            console.error(chalk.red.bold('Error hashing:', error));
         }
     }
 
@@ -49,7 +49,7 @@ class SQLiteDB {
         try {
             return await bcrypt.compare(plainText, hashed);
         } catch (error) {
-            console.error('Error verifying hash: ', error);
+            console.error(chalk.red.bold('Error verifying hash: ', error));
         }
     }
 }
@@ -71,7 +71,7 @@ class ExpressEasier {
     }
 
     useErrorHandling() {
-        
+
     }
 
     useBodyParsing() {
@@ -222,10 +222,10 @@ class ExpressEasier {
     }
 
     render(view, data) {
-        if(this.usingViewEngine) {
-        return this.viewEngine.render(view, data);
+        if (this.usingViewEngine) {
+            return this.viewEngine.render(view, data);
         } else {
-            console.error("Cannot render when not using views");
+            console.error(chalk.red.bold("Cannot render when not using views"));
             return;
         }
     }
@@ -238,27 +238,29 @@ class ExpressEasier {
         this.config.ignoreViewsPaths.push(path.replace(/\/$/, "").replace(/^\//, ""));
     }
 
-    listen(port, callback) {
+    listen(port = 3000, callback = () => {
+        console.log(chalk.green.bold(`Server is running on http://localhost:${port}`));
+    }) {
         this.server = this.app.listen(port, callback);
     }
 
-    gracefulShutdown() {
-        console.log('Received termination signal. Shutting down gracefully...');
+gracefulShutdown() {
+    console.log(chalk.red.bold('Received termination signal. Shutting down gracefully...'));
 
-        this.server.close(() => {
-          console.log('Closed all connections.');
-          if (this.onShutdown !== undefined) {
+    this.server.close(() => {
+        console.log(chalk.red.bold('Closed all connections.'));
+        if (this.onShutdown !== undefined) {
             this.onShutdown();
-          }
-          process.exit(0);
-        });
-        
-        // Force exit if there are ongoing requests after a certain timeout (e.g., 10 seconds)
-        setTimeout(() => {
-          console.error('Force shutdown after 10 seconds');
-          process.exit(1);
-        }, 10000);
-    }
+        }
+        process.exit(0);
+    });
+
+    // Force exit if there are ongoing requests after a certain timeout (e.g., 10 seconds)
+    setTimeout(() => {
+        console.log(chalk.red.bold('Force shutdown after 10 seconds'));
+        process.exit(1);
+    }, 10000);
+}
 }
 
 export default ExpressEasier;
