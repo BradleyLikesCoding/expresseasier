@@ -70,6 +70,10 @@ class ExpressEasier {
         return result;
     }
 
+    useErrorHandling() {
+        
+    }
+
     useBodyParsing() {
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
@@ -235,7 +239,25 @@ class ExpressEasier {
     }
 
     listen(port, callback) {
-        this.app.listen(port, callback);
+        this.server = this.app.listen(port, callback);
+    }
+
+    gracefulShutdown() {
+        console.log('Received termination signal. Shutting down gracefully...');
+
+        this.server.close(() => {
+          console.log('Closed all connections.');
+          if (this.onShutdown !== undefined) {
+            this.onShutdown();
+          }
+          process.exit(0);
+        });
+        
+        // Force exit if there are ongoing requests after a certain timeout (e.g., 10 seconds)
+        setTimeout(() => {
+          console.error('Force shutdown after 10 seconds');
+          process.exit(1);
+        }, 10000);
     }
 }
 
